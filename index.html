@@ -50,11 +50,21 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: #c4c4c4 transparent;
   }
+
+  .chat::-webkit-scrollbar { width: 4px; }
+  .chat::-webkit-scrollbar-thumb {
+    background: #c4c4c4;
+    border-radius: 2px;
+  }
+  .chat::-webkit-scrollbar-track { background: transparent; }
 
   .msg {
     display: flex;
     align-items: flex-start;
+    animation: bubbleIn 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
 
   .msg.me {
@@ -78,6 +88,39 @@
   .msg.me .bubble {
     background: #95ec69;
   }
+
+  .msg.typing .bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 13px 14px;
+  }
+
+  .msg.typing .bubble span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #b9b9b9;
+    animation: dotJump 1.15s infinite ease-in-out;
+  }
+
+  .msg.typing .bubble span:nth-child(2) { animation-delay: 0.15s; }
+  .msg.typing .bubble span:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.94); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes dotJump {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30%           { transform: translateY(-5px); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .msg { animation: none; }
+    .msg.typing .bubble span { animation: none; opacity: 0.6; }
+  }
 </style>
 </head>
 <body>
@@ -95,5 +138,79 @@
       </div>
     </main>
   </div>
+
+  <script>
+    (function () {
+      const chat = document.querySelector('.chat');
+
+      const script = [
+        { from: 'other', text: '在吗？' },
+        { from: 'me', text: '在的，怎么啦？' },
+        { from: 'other', text: '我想用 AI 做一个无限动画，听说可以用 git 边做边回退？' },
+        { from: 'me', text: '对，思路很简单' },
+        { from: 'me', text: '满意就 commit，不满意就 checkout / reset 回退再改' },
+        { from: 'other', text: '懂了，那我先去试试' },
+        { from: 'me', text: '👍 有不懂的随时问' }
+      ];
+
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      function scrollToBottom() {
+        chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
+      }
+
+      function addMessage(from, text) {
+        const row = document.createElement('div');
+        row.className = 'msg ' + from;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+
+        row.appendChild(bubble);
+        chat.appendChild(row);
+        scrollToBottom();
+        return row;
+      }
+
+      async function showTyping(hold) {
+        const row = document.createElement('div');
+        row.className = 'msg other typing';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        for (let i = 0; i < 3; i++) {
+          bubble.appendChild(document.createElement('span'));
+        }
+
+        row.appendChild(bubble);
+        chat.appendChild(row);
+        scrollToBottom();
+
+        await wait(hold);
+        row.remove();
+      }
+
+      async function play() {
+        while (true) {
+          chat.scrollTop = 0;
+          chat.innerHTML = '';
+          await wait(500);
+
+          for (const line of script) {
+            if (line.from === 'other') {
+              await showTyping(1300);
+            }
+            addMessage(line.from, line.text);
+            await wait(line.from === 'other' ? 1000 : 850);
+          }
+
+          await wait(2600);
+        }
+      }
+
+      play();
+    })();
+  </script>
 </body>
 </html>
